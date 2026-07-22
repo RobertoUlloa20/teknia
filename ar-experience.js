@@ -117,6 +117,7 @@ export class ARExperience {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.setClearColor(0x000000, 0)
+    this.renderer.setClearAlpha(0)
     this.renderer.xr.enabled = true
     this.renderer.xr.setReferenceSpaceType("local")
     this.renderer.domElement.className = "ar-canvas"
@@ -224,14 +225,26 @@ export class ARExperience {
     this.mode = "ar"
     this.onModeChange("ar")
 
+    // Activa fondos transparentes antes de abrir la camara AR
+    document.documentElement.classList.add("ar-active")
+    document.body.classList.add("ar-active")
+
     // Hit test permite encontrar el punto real donde el usuario enfoca
-    const session = await navigator.xr.requestSession("immersive-ar", {
-      requiredFeatures: ["hit-test"],
-      optionalFeatures: ["dom-overlay", "anchors", "local-floor"],
-      domOverlay: {
-        root: document.body
-      }
-    })
+    let session
+
+    try {
+      session = await navigator.xr.requestSession("immersive-ar", {
+        requiredFeatures: ["hit-test"],
+        optionalFeatures: ["dom-overlay", "anchors", "local-floor"],
+        domOverlay: {
+          root: document.body
+        }
+      })
+    } catch (error) {
+      document.documentElement.classList.remove("ar-active")
+      document.body.classList.remove("ar-active")
+      throw error
+    }
 
     this.session = session
 
@@ -999,6 +1012,9 @@ export class ARExperience {
 
   // Restablece la escena y avisa a la interfaz principal
   finishExperience() {
+    document.documentElement.classList.remove("ar-active")
+    document.body.classList.remove("ar-active")
+
     this.mode = "none"
     this.placed = false
     this.reticle.visible = false

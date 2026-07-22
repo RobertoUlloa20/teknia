@@ -1084,3 +1084,20 @@ button,
   }
 }
 
+/* CAMARA VISIBLE DURANTE LA SESION AR */
+html.ar-active,
+html.ar-active body{
+  background:transparent!important;
+}
+
+html.ar-active .ar-screen,
+html.ar-active .ar-stage,
+html.ar-active .ar-canvas{
+  background:transparent!important;
+}
+
+html.ar-active .ar-stage::before,
+html.ar-active .ar-stage::after{
+  display:none!important;
+}
+
