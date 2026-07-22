@@ -1,15 +1,25 @@
 [
-  [
-    {
-      "id": "plato-real",
-      "name": "Plato real TEKNIA",
-      "shortDescription": "Modelo del plato principal",
-      "description": "Plato visualizado mediante realidad aumentada",
-      "price": "$18",
-      "icon": "🍽️",
-      "model": "./models/plato-real.glb",
-      "diameterM": 0.28,
-      "fallbackColor": "#a95f38"
+  {
+    "id": "plato-real",
+    "name": "Plato real TEKNIA",
+    "shortDescription": "Modelo del plato principal",
+    "description": "Plato visualizado mediante realidad aumentada",
+    "price": "$18",
+    "icon": "🍽️",
+    "model": "./models/plato-real.glb",
+    "diameterM": 0.28,
+    "displayScale": 1,
+    "fallbackColor": "#a95f38",
+    "cleanup": {
+      "enabled": true,
+      "origin": [-0.0988514128, 0.4784577504, -0.0312763291],
+      "axisX": [0.1205398877, -0.198034414, 0.9727551112],
+      "axisDepth": [0.4884060431, 0.8649305985, 0.115562091],
+      "axisUp": [0.8642509315, -0.4611696333, -0.2009798418],
+      "cropCenter": [-0.08, 0.05],
+      "cropRadius": [0.34, 0.44],
+      "heightMin": -0.25,
+      "heightMax": 0.25
     }
-  ]
+  }
 ]
