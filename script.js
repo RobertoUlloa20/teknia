@@ -1,17 +1,15 @@
 "use strict"
 
-import { ARExperience } from "./ar-experience.js"
-
-const APP_VERSION = "15"
-
-window.__tekniaModuleLoaded = true
+const APP_VERSION = "16"
 
 const state = {
   menu: [],
   selectedDish: null,
   arSupported: false,
   surfaceConfirmed: false,
-  toastTimer: null
+  toastTimer: null,
+  arModulePromise: null,
+  arExperience: null
 }
 
 const elements = {
@@ -43,32 +41,14 @@ const elements = {
   toast: document.getElementById("toast")
 }
 
-// Esta clase controla Three js WebXR el anclaje y la escala real
-const arExperience = new ARExperience({
-  stage: elements.arStage,
-  gestureLayer: elements.gestureLayer,
-  placeButton: elements.placeDishButton,
-  onStatusChange: updateGuide,
-  onScaleChange: updateScaleIndicator,
-  onModeChange: updateMode,
-  onPlacedChange: updatePlacedState,
-  onSessionEnd: handleExperienceEnd,
-  onMessage: showToast
-})
-
-// Muestra la bienvenida antes de preparar el escaneo
+// Oculta la bienvenida tambien desde JavaScript cuando este archivo carga
 function startWelcome() {
   window.setTimeout(() => {
-    elements.welcomeScreen.classList.add("is-closing")
-
-    window.setTimeout(() => {
-      elements.welcomeScreen.hidden = true
-      elements.appShell.hidden = false
-    }, 850)
+    elements.welcomeScreen?.classList.add("is-closing")
   }, 3000)
 }
 
-// Carga la informacion del menu sin seleccionar ningun plato
+// Carga la informacion del menu sin cargar todavia Three js
 async function loadMenu() {
   const response = await fetch(`./menu.json?v=${APP_VERSION}`, {
     cache: "no-store"
@@ -82,7 +62,7 @@ async function loadMenu() {
   renderDrawerMenu()
 }
 
-// Crea el menu que se mostrara despues de confirmar la mesa
+// Crea las tarjetas que apareceran despues de confirmar la mesa
 function renderDrawerMenu() {
   elements.drawerMenuList.replaceChildren()
 
@@ -91,7 +71,7 @@ function renderDrawerMenu() {
   })
 }
 
-// Crea una tarjeta para elegir un plato
+// Crea una tarjeta para cada plato
 function createMenuCard(dish) {
   const button = document.createElement("button")
 
@@ -118,7 +98,36 @@ function createMenuCard(dish) {
   return button
 }
 
-// Carga el plato solo despues de que la mesa ya fue confirmada
+// Carga el modulo AR solo cuando el usuario decide escanear
+async function ensureARExperience() {
+  if (state.arExperience) {
+    return state.arExperience
+  }
+
+  if (!state.arModulePromise) {
+    state.arModulePromise = import(`./ar-experience.js?v=${APP_VERSION}`)
+  }
+
+  const module = await state.arModulePromise
+
+  state.arExperience = new module.ARExperience({
+    stage: elements.arStage,
+    gestureLayer: elements.gestureLayer,
+    placeButton: elements.placeDishButton,
+    onStatusChange: updateGuide,
+    onScaleChange: updateScaleIndicator,
+    onModeChange: updateMode,
+    onPlacedChange: updatePlacedState,
+    onSessionEnd: handleExperienceEnd,
+    onMessage: showToast
+  })
+
+  await state.arExperience.initialize()
+
+  return state.arExperience
+}
+
+// Selecciona un plato despues de confirmar el area
 async function selectDish(dishId) {
   if (!state.surfaceConfirmed) {
     showToast("Primero confirma el area de la mesa")
@@ -130,6 +139,8 @@ async function selectDish(dishId) {
   if (!dish) {
     return
   }
+
+  const arExperience = await ensureARExperience()
 
   state.selectedDish = dish
 
@@ -170,20 +181,37 @@ async function selectDish(dishId) {
   }
 }
 
-// Comprueba si el dispositivo tiene WebXR AR
+// Comprueba WebXR sin cargar Three js
 async function checkArSupport() {
-  state.arSupported = await arExperience.checkSupport()
-
-  if (state.arSupported) {
-    elements.compatibilityNote.textContent =
-      "AR real disponible en este dispositivo"
-
-    elements.startArButton.disabled = false
-    elements.startArButton.querySelector("span").textContent =
-      "ESCANEAR AREA DE SERVICIO"
-
+  if (!window.isSecureContext || !navigator.xr) {
+    setUnsupportedDevice()
     return
   }
+
+  try {
+    state.arSupported =
+      await navigator.xr.isSessionSupported("immersive-ar")
+  } catch (error) {
+    console.warn("No se pudo comprobar WebXR", error)
+    state.arSupported = false
+  }
+
+  if (!state.arSupported) {
+    setUnsupportedDevice()
+    return
+  }
+
+  elements.compatibilityNote.textContent =
+    "AR real disponible en este dispositivo"
+
+  elements.startArButton.disabled = false
+  elements.startArButton.querySelector("span").textContent =
+    "ESCANEAR AREA DE SERVICIO"
+}
+
+// Configura la interfaz cuando el equipo no permite AR real
+function setUnsupportedDevice() {
+  state.arSupported = false
 
   elements.compatibilityNote.textContent =
     "Abre esta pagina en un telefono Android compatible con WebXR AR"
@@ -196,39 +224,53 @@ async function checkArSupport() {
     "En computadora no se mostrara un plato sin camara"
 }
 
-// Comienza el escaneo sin haber seleccionado un plato
+// Abre la camara AR sin seleccionar un plato primero
 async function startScanningExperience() {
   if (!state.arSupported) {
     showToast("Usa un telefono compatible con WebXR AR")
     return
   }
 
-  state.selectedDish = null
-  state.surfaceConfirmed = false
-
-  elements.arDishName.textContent = "Escaneando area de servicio"
-  elements.scaleBadge.textContent = "SIN PLATO"
-  elements.changeDishButton.hidden = true
-  elements.gestureHint.hidden = true
-  elements.gestureLayer.classList.remove("is-active")
-  closeMenuDrawer()
-
-  await arExperience.clearDish()
-
-  elements.arScreen.hidden = false
-  elements.appShell.hidden = true
+  elements.startArButton.disabled = true
+  elements.startArButton.querySelector("span").textContent =
+    "CARGANDO CAMARA AR"
 
   try {
+    const arExperience = await ensureARExperience()
+
+    state.selectedDish = null
+    state.surfaceConfirmed = false
+
+    elements.arDishName.textContent = "Escaneando area de servicio"
+    elements.scaleBadge.textContent = "SIN PLATO"
+    elements.changeDishButton.hidden = true
+    elements.gestureHint.hidden = true
+    elements.gestureLayer.classList.remove("is-active")
+    closeMenuDrawer()
+
+    await arExperience.clearDish()
+
+    elements.arScreen.hidden = false
+    elements.appShell.hidden = true
+
     await arExperience.startAR()
   } catch (error) {
     console.error(error)
+
     elements.arScreen.hidden = true
     elements.appShell.hidden = false
-    showToast("No se pudo iniciar la camara AR")
+    elements.startArButton.disabled = false
+    elements.startArButton.querySelector("span").textContent =
+      "ESCANEAR AREA DE SERVICIO"
+
+    showToast("No se pudo cargar la camara AR")
+
+    elements.compatibilityNote.textContent =
+      "Error al cargar Three js o WebXR revisa la conexion"
   }
 }
 
-// Actualiza los mensajes que guian al usuario
+// Actualiza los mensajes de escaneo
 function updateGuide(status) {
   elements.guideTitle.textContent = status.title
   elements.guideText.textContent = status.text
@@ -238,7 +280,7 @@ function updateGuide(status) {
   elements.guideCard.classList.toggle("is-warning", status.tone === "warning")
 }
 
-// Indica si el usuario mantiene la escala real
+// Actualiza la etiqueta de escala
 function updateScaleIndicator(scale) {
   if (!state.selectedDish) {
     elements.scaleBadge.textContent = "SIN PLATO"
@@ -256,12 +298,12 @@ function updateScaleIndicator(scale) {
   elements.resetScaleButton.hidden = isRealScale
 }
 
-// Mantiene visible la etiqueta de realidad aumentada
+// Mantiene la etiqueta de realidad aumentada
 function updateMode() {
   elements.arModeLabel.textContent = "REALIDAD AUMENTADA"
 }
 
-// Abre el menu cuando la mesa queda confirmada
+// Abre el menu despues de confirmar la superficie
 function updatePlacedState(placed) {
   if (!placed) {
     state.surfaceConfirmed = false
@@ -283,10 +325,14 @@ function updatePlacedState(placed) {
   elements.gestureLayer.classList.add("is-active")
 }
 
-// Regresa a la pantalla inicial cuando termina AR
+// Regresa a la pantalla inicial al cerrar AR
 function handleExperienceEnd() {
   elements.arScreen.hidden = true
   elements.appShell.hidden = false
+  elements.startArButton.disabled = false
+  elements.startArButton.querySelector("span").textContent =
+    "ESCANEAR AREA DE SERVICIO"
+
   state.surfaceConfirmed = false
   state.selectedDish = null
   closeMenuDrawer()
@@ -306,7 +352,7 @@ function closeMenuDrawer() {
   elements.menuDrawer.hidden = true
 }
 
-// Muestra mensajes temporales
+// Muestra un mensaje temporal
 function showToast(message) {
   elements.toast.textContent = message
   elements.toast.classList.add("is-visible")
@@ -321,13 +367,19 @@ function showToast(message) {
 // Conecta los botones de la interfaz
 function wireEvents() {
   elements.startArButton.addEventListener("click", startScanningExperience)
-  elements.closeArButton.addEventListener("click", () => arExperience.end())
+
+  elements.closeArButton.addEventListener("click", async () => {
+    await state.arExperience?.end()
+  })
+
   elements.placeDishButton.addEventListener("click", () => {
-    arExperience.placeDish()
+    state.arExperience?.placeDish()
   })
+
   elements.resetScaleButton.addEventListener("click", () => {
-    arExperience.resetInspectionScale()
+    state.arExperience?.resetInspectionScale()
   })
+
   elements.changeDishButton.addEventListener("click", openMenuDrawer)
   elements.drawerCloseButton.addEventListener("click", closeMenuDrawer)
 
@@ -346,13 +398,10 @@ function wireEvents() {
   })
 }
 
-// Prepara toda la aplicacion
+// Inicia la parte visual sin depender del modulo AR
 async function initializeApp() {
   wireEvents()
   startWelcome()
-
-  await arExperience.initialize()
-  await checkArSupport()
 
   try {
     await loadMenu()
@@ -360,6 +409,8 @@ async function initializeApp() {
     console.error(error)
     showToast("No se pudo cargar el menu")
   }
+
+  await checkArSupport()
 }
 
 initializeApp()

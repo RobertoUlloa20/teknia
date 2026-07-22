@@ -61,6 +61,7 @@ button,
     radial-gradient(circle at 78% 88%,rgba(112,0,255,.18),transparent 35%),
     linear-gradient(145deg,#020307,#060711 55%,#080313);
   transition:opacity .8s ease,transform .8s ease,visibility .8s ease;
+  animation:welcomeAutomaticExit .85s ease 3.2s forwards;
 }
 
 .welcome-screen.is-closing{
@@ -1057,5 +1058,29 @@ button,
   color:rgba(189,194,208,.58);
   font-size:11px;
   line-height:1.35;
+}
+
+/* SALIDA AUTOMATICA QUE NO DEPENDE DE JAVASCRIPT */
+@keyframes welcomeAutomaticExit{
+  0%{
+    opacity:1;
+    visibility:visible;
+    transform:scale(1);
+    pointer-events:auto;
+  }
+
+  99%{
+    opacity:0;
+    visibility:visible;
+    transform:scale(1.04);
+    pointer-events:none;
+  }
+
+  100%{
+    opacity:0;
+    visibility:hidden;
+    transform:scale(1.04);
+    pointer-events:none;
+  }
 }
 
