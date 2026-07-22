@@ -8,7 +8,7 @@
     "icon": "🍽️",
     "model": "./models/plato-real.glb",
     "diameterM": 0.28,
-    "displayScale": 1,
+    "displayScale": 1.5,
     "fallbackColor": "#a95f38",
     "cleanup": {
       "enabled": true,
