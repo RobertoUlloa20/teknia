@@ -6,6 +6,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 const MIN_SCALE = 0.72;
 const MAX_SCALE = 1.8;
 
+const MOVE_SPEED = 0.0015
+const MIN_POSITION_Y = -0.35
+const MAX_POSITION_Y = 0.25
+
 export class CompatibleAR {
   constructor(options) {
     // Guarda los elementos entregados por la interfaz principal
@@ -25,6 +29,7 @@ export class CompatibleAR {
     this.scale = 1;
     this.activePointers = new Map();
     this.lastPointerX = null;
+    this.lastPointerY = null
     this.pinchStartDistance = null;
     this.pinchStartScale = 1;
 
@@ -103,6 +108,7 @@ export class CompatibleAR {
     this.currentModel = model;
     this.modelGroup.add(model);
     this.modelGroup.rotation.set(0, 0, 0);
+    this.modelGroup.position.set(0, -0.10, 0)
     this.modelGroup.visible = true;
 
     this.resetScale();
@@ -346,6 +352,7 @@ export class CompatibleAR {
 
     if (this.activePointers.size === 1) {
       this.lastPointerX = event.clientX;
+      this.lastPointerY = event.clientY
     }
 
     if (this.activePointers.size === 2) {
@@ -365,12 +372,29 @@ export class CompatibleAR {
       y: event.clientY,
     });
 
-    if (this.activePointers.size === 1 && this.lastPointerX !== null) {
-      const deltaX = event.clientX - this.lastPointerX;
-      this.modelGroup.rotation.y += deltaX * 0.009;
-      this.lastPointerX = event.clientX;
-      return;
-    }
+    if (
+  this.activePointers.size === 1 &&
+  this.lastPointerX !== null &&
+  this.lastPointerY !== null
+) {
+  const deltaX = event.clientX - this.lastPointerX
+  const deltaY = event.clientY - this.lastPointerY
+
+  // El movimiento horizontal gira el plato
+  this.modelGroup.rotation.y += deltaX * 0.009
+
+  // El movimiento vertical sube o baja el plato
+  this.modelGroup.position.y = THREE.MathUtils.clamp(
+    this.modelGroup.position.y - deltaY * MOVE_SPEED,
+    MIN_POSITION_Y,
+    MAX_POSITION_Y
+  )
+
+  this.lastPointerX = event.clientX
+  this.lastPointerY = event.clientY
+
+  return
+}
 
     if (this.activePointers.size === 2 && this.pinchStartDistance) {
       const distance = this.getPointerDistance();
@@ -393,6 +417,7 @@ export class CompatibleAR {
 
     if (this.activePointers.size === 0) {
       this.lastPointerX = null;
+      this.lastPointerY = null;
       this.pinchStartDistance = null;
       return;
     }
@@ -400,6 +425,7 @@ export class CompatibleAR {
     if (this.activePointers.size === 1) {
       const point = Array.from(this.activePointers.values())[0];
       this.lastPointerX = point.x;
+      this.lastPointerY = point.y;
       this.pinchStartDistance = null;
     }
   }
