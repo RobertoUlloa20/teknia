@@ -1,6 +1,6 @@
 "use strict"
 
-const APP_VERSION = "21"
+const APP_VERSION = "26"
 
 const state = {
   stream: null,
@@ -456,4 +456,4 @@ startApplication().catch((error) => {
   )
 })
 
-console.info("TEKNIA VERSION 21 CARGADA")
+console.info("TEKNIA VERSION 26 CARGADA")
