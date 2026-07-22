@@ -54,7 +54,6 @@ let welcomeHideTimer = null;
 let welcomeRemoveTimer = null;
 
 
-
 /* ----------------------------------------------------------------
  * FUNCIONES AUXILIARES PARA BUSCAR ELEMENTOS
  * ---------------------------------------------------------------- */
@@ -866,7 +865,6 @@ function initializeEventListeners() {
   }
 }
 
-
 /* ----------------------------------------------------------------
  * PANTALLA DE BIENVENIDA
  * ---------------------------------------------------------------- */
@@ -927,6 +925,7 @@ window.setInterval(updateClock, 30000);
 
 // Muestra la presentación inicial y luego abre la cámara.
 startWelcomeExperience();
+
 /*
  * No se detiene la cámara simplemente cuando document.hidden cambia.
  *
@@ -938,7 +937,7 @@ startWelcomeExperience();
  * sistema operativo la terminó, la solicitamos otra vez.
  */
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden || activeScreen !== "s-cam") {
+  if (document.hidden || activeScreen !== "s-cam" || welcomeIsActive) {
     return;
   }
 
@@ -962,7 +961,13 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // pagehide sí representa una salida real de la página en navegadores móviles.
-window.addEventListener("pagehide", stopCamera);
+window.addEventListener("pagehide", () => {
+  clearWelcomeTimers();
+  stopCamera();
+});
 
 // También libera la cámara al cerrar o recargar completamente la página.
-window.addEventListener("beforeunload", stopCamera);
+window.addEventListener("beforeunload", () => {
+  clearWelcomeTimers();
+  stopCamera();
+});
