@@ -189,6 +189,28 @@ export class ARExperience {
     }
   }
 
+  // Retira el plato anterior antes de comenzar un nuevo escaneo
+  async clearDish() {
+    this.modelLoadToken += 1
+    this.currentDish = null
+    this.loadedDishModel = null
+
+    if (this.rotationGroup) {
+      while (this.rotationGroup.children.length > 0) {
+        this.rotationGroup.remove(this.rotationGroup.children[0])
+      }
+    }
+
+    if (this.occlusionPlane && this.placementGroup) {
+      this.placementGroup.remove(this.occlusionPlane)
+      this.occlusionPlane.geometry.dispose()
+      this.occlusionPlane.material.dispose()
+      this.occlusionPlane = null
+    }
+
+    this.resetInspectionScale()
+  }
+
   // Solicita una sesion AR dentro del toque del usuario
   async startAR() {
     if (!this.renderer) {
@@ -239,44 +261,7 @@ export class ARExperience {
     })
   }
 
-  // Abre una demostracion 3D cuando WebXR no esta disponible
-  async startDemo() {
-    if (!this.renderer) {
-      await this.initialize()
-    }
-
-    this.resetRuntimeState()
-    this.mode = "demo"
-    this.onModeChange("demo")
-
-    this.scene.background = new THREE.Color(0x05070c)
-    this.tableMesh.visible = true
-
-    this.camera.position.set(0.42, 0.34, 0.48)
-    this.camera.lookAt(0, 0.035, 0)
-
-    this.placementGroup.matrixAutoUpdate = true
-    this.placementGroup.position.set(0, 0.001, 0)
-    this.placementGroup.quaternion.identity()
-    this.placementGroup.scale.setScalar(1)
-    this.placementGroup.visible = true
-
-    this.placed = true
-    this.tableHeight = 0
-    this.onPlacedChange(true)
-
-    this.renderer.setAnimationLoop(this.boundRenderDemo)
-
-    this.setStatus({
-      key: "demo-ready",
-      title: "Modo demostracion 3D",
-      text: "Desliza para girar y usa dos dedos para ampliar el plato",
-      icon: "3D",
-      tone: "ready"
-    })
-  }
-
-  // Termina AR o cierra el modo demostracion
+  // Termina la sesion AR y regresa a la pantalla inicial
   async end() {
     if (this.session) {
       await this.session.end()
@@ -323,6 +308,18 @@ export class ARExperience {
       } catch (error) {
         console.warn("El dispositivo no creo un ancla y se usara la matriz local", error)
       }
+    }
+
+    if (!this.currentDish) {
+      this.setStatus({
+        key: "surface-confirmed",
+        title: "Area de servicio lista",
+        text: "Ahora selecciona el plato que deseas visualizar",
+        icon: "✓",
+        tone: "ready"
+      })
+
+      return
     }
 
     const diameterCm = Math.round(this.currentDish.diameterM * 100)
@@ -812,6 +809,18 @@ export class ARExperience {
 
     this.placementGroup.visible = true
 
+    if (!this.currentDish || !this.loadedDishModel) {
+      this.setStatus({
+        key: "surface-waiting-menu",
+        title: "Area de servicio lista",
+        text: "Selecciona un plato para colocarlo en esta posicion",
+        icon: "✓",
+        tone: "ready"
+      })
+
+      return
+    }
+
     this.setStatus({
       key: "placed-active",
       title: "Plato colocado a escala real",
@@ -819,11 +828,6 @@ export class ARExperience {
       icon: "✓",
       tone: "ready"
     })
-  }
-
-  // Dibuja el modo demostracion fuera de WebXR
-  renderDemo() {
-    this.renderer.render(this.scene, this.camera)
   }
 
   // Permite colocar el plato con un toque nativo de la sesion XR

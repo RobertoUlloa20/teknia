@@ -17,7 +17,7 @@
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap"
     rel="stylesheet"
   >
-  <link rel="stylesheet" href="./styles.css?v=13">
+  <link rel="stylesheet" href="./styles.css?v=14">
 
   <!-- MODULOS 3D FIJADOS A UNA VERSION CONCRETA -->
   <script type="importmap">
@@ -54,13 +54,11 @@
           <span style="--x:51%;--delay:-2.1s;--duration:2.8s;--drift:18px"></span>
           <span style="--x:54%;--delay:-.4s;--duration:2.4s;--drift:-16px"></span>
           <span style="--x:57%;--delay:-1.2s;--duration:2.9s;--drift:10px"></span>
-          <span style="--x:46%;--delay:-2.4s;--duration:2.5s;--drift:20px"></span>
-          <span style="--x:53%;--delay:-1.8s;--duration:2.2s;--drift:-20px"></span>
         </div>
       </div>
 
       <h1>Bienvenidos a <span>TEKNIA</span></h1>
-      <p>Visualiza cada plato del menu sobre tu propia mesa</p>
+      <p>Primero prepara tu espacio y despues descubre el menu</p>
 
       <div class="welcome-loader" aria-hidden="true">
         <span></span>
@@ -70,7 +68,7 @@
     </div>
   </section>
 
-  <!-- MENU PRINCIPAL -->
+  <!-- PANTALLA PREVIA AL ESCANEO -->
   <main class="app-shell" id="app-shell" hidden>
     <header class="app-header">
       <div class="brand-mini">
@@ -86,42 +84,44 @@
       </button>
     </header>
 
-    <section class="hero-card">
-      <p class="eyebrow">ELIGE UN PLATO</p>
-      <h2>Mira el menu a escala real</h2>
+    <section class="hero-card scan-first-card">
+      <p class="eyebrow">PRIMER PASO</p>
+      <h2>Prepara el espacio de tu plato</h2>
       <p>
-        Selecciona un plato y colocalo en el espacio libre que tienes frente a ti
+        Enfoca el area libre que tienes frente a ti sin necesidad de escanear
+        toda la mesa
       </p>
-    </section>
 
-    <section class="menu-section">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">MENU DEMOSTRATIVO</p>
-          <h3>Platos disponibles</h3>
-        </div>
-        <span class="menu-count" id="menu-count">0 platos</span>
-      </div>
+      <div class="flow-preview">
+        <article class="flow-step is-current">
+          <span>1</span>
+          <div>
+            <strong>Escanear el area</strong>
+            <small>Detectar la superficie horizontal</small>
+          </div>
+        </article>
 
-      <div class="menu-list" id="menu-list"></div>
-    </section>
+        <article class="flow-step">
+          <span>2</span>
+          <div>
+            <strong>Confirmar la posicion</strong>
+            <small>Crear una zona invisible estable</small>
+          </div>
+        </article>
 
-    <section class="selected-panel" id="selected-panel">
-      <div>
-        <p class="eyebrow">SELECCION ACTUAL</p>
-        <h3 id="selected-name">Cargando menu</h3>
-        <p id="selected-description"></p>
-      </div>
-
-      <div class="selected-meta">
-        <span id="selected-diameter">Escala real</span>
-        <strong id="selected-price"></strong>
+        <article class="flow-step">
+          <span>3</span>
+          <div>
+            <strong>Elegir el plato</strong>
+            <small>Abrir el menu dentro de la camara</small>
+          </div>
+        </article>
       </div>
     </section>
 
     <button class="primary-button" id="start-ar-button" type="button" disabled>
-      <span>ESCANEAR AREA DE SERVICIO</span>
-      <small>Enfoca donde quieres colocar tu plato</small>
+      <span>COMPROBANDO DISPOSITIVO</span>
+      <small>La camara AR se abre despues de tocar este boton</small>
     </button>
 
     <p class="compatibility-note" id="compatibility-note">
@@ -140,11 +140,11 @@
         </button>
 
         <div class="ar-title-block">
-          <strong id="ar-dish-name">Plato seleccionado</strong>
+          <strong id="ar-dish-name">Escaneando area de servicio</strong>
           <span id="ar-mode-label">REALIDAD AUMENTADA</span>
         </div>
 
-        <div class="scale-badge" id="scale-badge">ESCALA 1:1</div>
+        <div class="scale-badge" id="scale-badge">SIN PLATO</div>
       </div>
 
       <div class="guide-card" id="guide-card">
@@ -162,12 +162,12 @@
       </div>
 
       <div class="ar-bottom-controls">
-        <button class="secondary-button" id="change-dish-button" type="button">
+        <button class="secondary-button" id="change-dish-button" type="button" hidden>
           CAMBIAR PLATO
         </button>
 
         <button class="place-button" id="place-dish-button" type="button" hidden>
-          COLOCAR PLATO
+          CONFIRMAR AREA
         </button>
 
         <button class="secondary-button" id="reset-scale-button" type="button" hidden>
@@ -181,13 +181,17 @@
 
       <div class="ar-gesture-layer" id="ar-gesture-layer" aria-hidden="true"></div>
 
+      <!-- EL MENU SOLO APARECE DESPUES DE CONFIRMAR LA MESA -->
       <aside class="menu-drawer" id="menu-drawer" hidden>
         <div class="drawer-handle"></div>
 
         <div class="drawer-heading">
           <div>
-            <p class="eyebrow">MENU</p>
-            <h3>Cambiar plato</h3>
+            <p class="eyebrow">SEGUNDO PASO</p>
+            <h3>Ahora elige tu plato</h3>
+            <p class="drawer-subtitle">
+              El modelo aparecera en la zona que acabas de confirmar
+            </p>
           </div>
 
           <button class="drawer-close" id="drawer-close-button" type="button">
@@ -205,24 +209,24 @@
     <button class="dialog-close" id="help-close-button" type="button">×</button>
 
     <p class="eyebrow">COMO FUNCIONA</p>
-    <h2>Coloca el plato sin escanear toda la mesa</h2>
+    <h2>Primero la mesa y despues el menu</h2>
 
     <ol>
-      <li>Elige un plato del menu</li>
+      <li>Toca escanear area de servicio</li>
       <li>Enfoca el espacio libre que tienes frente a ti</li>
-      <li>Manten el telefono a una altura moderada</li>
-      <li>Toca colocar cuando la superficie sea estable</li>
-      <li>Desliza horizontalmente para girar el plato</li>
+      <li>Confirma la zona cuando la superficie sea estable</li>
+      <li>Selecciona un plato del menu</li>
+      <li>Desliza horizontalmente para girarlo</li>
     </ol>
 
     <p>
-      La zona invisible usa el diametro real del plato y agrega seis centimetros
-      de margen por cada lado
+      En computadora no se simula una camara porque la experiencia real
+      necesita un dispositivo compatible con WebXR AR
     </p>
   </dialog>
 
   <div class="toast" id="toast"></div>
 
-  <script type="module" src="./script.js?v=13"></script>
+  <script type="module" src="./script.js?v=14"></script>
 </body>
 </html>

@@ -993,3 +993,69 @@ button,
   }
 }
 
+/* FLUJO DE ESCANEO ANTES DEL MENU */
+.scan-first-card{
+  margin-top:32px;
+}
+
+.flow-preview{
+  display:grid;
+  gap:11px;
+  margin-top:24px;
+}
+
+.flow-step{
+  display:grid;
+  grid-template-columns:38px 1fr;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border:1px solid rgba(189,194,208,.11);
+  border-radius:15px;
+  background:rgba(0,0,0,.18);
+}
+
+.flow-step>span{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  background:rgba(189,194,208,.07);
+  color:rgba(189,194,208,.55);
+  font-family:"Orbitron",monospace;
+  font-size:11px;
+}
+
+.flow-step.is-current{
+  border-color:rgba(0,242,255,.3);
+  background:rgba(0,242,255,.055);
+}
+
+.flow-step.is-current>span{
+  background:rgba(0,242,255,.13);
+  color:var(--cyan);
+}
+
+.flow-step strong{
+  display:block;
+  font-family:"Orbitron",monospace;
+  font-size:9px;
+  letter-spacing:.8px;
+}
+
+.flow-step small{
+  display:block;
+  margin-top:4px;
+  color:rgba(189,194,208,.55);
+  font-size:11px;
+}
+
+.drawer-subtitle{
+  margin-top:5px;
+  color:rgba(189,194,208,.58);
+  font-size:11px;
+  line-height:1.35;
+}
+

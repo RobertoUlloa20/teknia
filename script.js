@@ -2,25 +2,20 @@
 
 import { ARExperience } from "./ar-experience.js"
 
-const APP_VERSION = "13"
+const APP_VERSION = "14"
 
 const state = {
   menu: [],
   selectedDish: null,
   arSupported: false,
+  surfaceConfirmed: false,
   toastTimer: null
 }
 
 const elements = {
   welcomeScreen: document.getElementById("welcome-screen"),
   appShell: document.getElementById("app-shell"),
-  menuList: document.getElementById("menu-list"),
   drawerMenuList: document.getElementById("drawer-menu-list"),
-  menuCount: document.getElementById("menu-count"),
-  selectedName: document.getElementById("selected-name"),
-  selectedDescription: document.getElementById("selected-description"),
-  selectedDiameter: document.getElementById("selected-diameter"),
-  selectedPrice: document.getElementById("selected-price"),
   startArButton: document.getElementById("start-ar-button"),
   compatibilityNote: document.getElementById("compatibility-note"),
   arScreen: document.getElementById("ar-screen"),
@@ -46,7 +41,7 @@ const elements = {
   toast: document.getElementById("toast")
 }
 
-// Esta clase concentra toda la logica de Three js y WebXR
+// Esta clase controla Three js WebXR el anclaje y la escala real
 const arExperience = new ARExperience({
   stage: elements.arStage,
   gestureLayer: elements.gestureLayer,
@@ -59,7 +54,7 @@ const arExperience = new ARExperience({
   onMessage: showToast
 })
 
-// Espera a que termine la animacion inicial
+// Muestra la bienvenida antes de preparar el escaneo
 function startWelcome() {
   window.setTimeout(() => {
     elements.welcomeScreen.classList.add("is-closing")
@@ -68,10 +63,10 @@ function startWelcome() {
       elements.welcomeScreen.hidden = true
       elements.appShell.hidden = false
     }, 850)
-  }, 3300)
+  }, 3000)
 }
 
-// Carga el archivo que contiene los platos del menu
+// Carga la informacion del menu sin seleccionar ningun plato
 async function loadMenu() {
   const response = await fetch(`./menu.json?v=${APP_VERSION}`, {
     cache: "no-store"
@@ -82,28 +77,20 @@ async function loadMenu() {
   }
 
   state.menu = await response.json()
-  elements.menuCount.textContent = `${state.menu.length} platos`
-
-  renderMenus()
-
-  if (state.menu.length > 0) {
-    await selectDish(state.menu[0].id)
-  }
+  renderDrawerMenu()
 }
 
-// Dibuja el menu principal y el menu que aparece dentro de AR
-function renderMenus() {
-  elements.menuList.replaceChildren()
+// Crea el menu que se mostrara despues de confirmar la mesa
+function renderDrawerMenu() {
   elements.drawerMenuList.replaceChildren()
 
   state.menu.forEach((dish) => {
-    elements.menuList.append(createMenuCard(dish))
-    elements.drawerMenuList.append(createMenuCard(dish, true))
+    elements.drawerMenuList.append(createMenuCard(dish))
   })
 }
 
-// Crea una tarjeta reutilizable para cada plato
-function createMenuCard(dish, compact = false) {
+// Crea una tarjeta para elegir un plato
+function createMenuCard(dish) {
   const button = document.createElement("button")
 
   button.type = "button"
@@ -122,23 +109,20 @@ function createMenuCard(dish, compact = false) {
     </span>
   `
 
-  if (compact) {
-    button.classList.add("is-compact")
-  }
-
   button.addEventListener("click", async () => {
     await selectDish(dish.id)
-
-    if (!elements.menuDrawer.hidden) {
-      closeMenuDrawer()
-    }
   })
 
   return button
 }
 
-// Selecciona un plato y prepara su modelo antes de abrir AR
+// Carga el plato solo despues de que la mesa ya fue confirmada
 async function selectDish(dishId) {
+  if (!state.surfaceConfirmed) {
+    showToast("Primero confirma el area de la mesa")
+    return
+  }
+
   const dish = state.menu.find((item) => item.id === dishId)
 
   if (!dish) {
@@ -151,29 +135,40 @@ async function selectDish(dishId) {
     card.classList.toggle("is-selected", card.dataset.dishId === dish.id)
   })
 
-  elements.selectedName.textContent = dish.name
-  elements.selectedDescription.textContent = dish.description
-  elements.selectedDiameter.textContent =
-    `${Math.round(dish.diameterM * 100)} cm a escala real`
-  elements.selectedPrice.textContent = dish.price
   elements.arDishName.textContent = dish.name
+  elements.scaleBadge.textContent = "CARGANDO"
+  closeMenuDrawer()
 
-  elements.startArButton.disabled = true
-  elements.startArButton.querySelector("span").textContent = "PREPARANDO MODELO"
+  updateGuide({
+    key: "loading-selected-dish",
+    title: "Preparando el plato",
+    text: "Estamos ajustando el modelo a sus dimensiones reales",
+    icon: "◌",
+    tone: "normal"
+  })
 
   try {
     await arExperience.setDish(dish)
+
+    elements.scaleBadge.textContent = "ESCALA 1:1"
+    elements.changeDishButton.hidden = false
+    updatePlacedState(true)
+
+    updateGuide({
+      key: "dish-ready",
+      title: "Plato colocado a escala real",
+      text: "Mueve el telefono para verlo desde arriba o desde los lados",
+      icon: "✓",
+      tone: "ready"
+    })
   } catch (error) {
     console.error(error)
-    showToast("Se usara el modelo de respaldo")
+    elements.scaleBadge.textContent = "ERROR"
+    showToast("No se pudo cargar el modelo")
   }
-
-  elements.startArButton.disabled = false
-  elements.startArButton.querySelector("span").textContent =
-    state.arSupported ? "ESCANEAR AREA DE SERVICIO" : "ABRIR DEMO 3D"
 }
 
-// Comprueba si el navegador permite una sesion AR inmersiva
+// Comprueba si el dispositivo tiene WebXR AR
 async function checkArSupport() {
   state.arSupported = await arExperience.checkSupport()
 
@@ -181,6 +176,7 @@ async function checkArSupport() {
     elements.compatibilityNote.textContent =
       "AR real disponible en este dispositivo"
 
+    elements.startArButton.disabled = false
     elements.startArButton.querySelector("span").textContent =
       "ESCANEAR AREA DE SERVICIO"
 
@@ -188,37 +184,49 @@ async function checkArSupport() {
   }
 
   elements.compatibilityNote.textContent =
-    "Este dispositivo usara el modo demo 3D porque no ofrece WebXR AR"
+    "Abre esta pagina en un telefono Android compatible con WebXR AR"
 
+  elements.startArButton.disabled = true
   elements.startArButton.querySelector("span").textContent =
-    "ABRIR DEMO 3D"
+    "AR NO DISPONIBLE EN ESTE EQUIPO"
+
+  elements.startArButton.querySelector("small").textContent =
+    "En computadora no se mostrara un plato sin camara"
 }
 
-// Inicia AR real o el modo demostracion segun el dispositivo
-async function startSelectedExperience() {
-  if (!state.selectedDish) {
-    showToast("Selecciona un plato")
+// Comienza el escaneo sin haber seleccionado un plato
+async function startScanningExperience() {
+  if (!state.arSupported) {
+    showToast("Usa un telefono compatible con WebXR AR")
     return
   }
 
+  state.selectedDish = null
+  state.surfaceConfirmed = false
+
+  elements.arDishName.textContent = "Escaneando area de servicio"
+  elements.scaleBadge.textContent = "SIN PLATO"
+  elements.changeDishButton.hidden = true
+  elements.gestureHint.hidden = true
+  elements.gestureLayer.classList.remove("is-active")
+  closeMenuDrawer()
+
+  await arExperience.clearDish()
+
   elements.arScreen.hidden = false
   elements.appShell.hidden = true
-  elements.menuDrawer.hidden = true
 
   try {
-    if (state.arSupported) {
-      await arExperience.startAR()
-    } else {
-      await arExperience.startDemo()
-    }
+    await arExperience.startAR()
   } catch (error) {
     console.error(error)
-    showToast("No se pudo iniciar AR y se abrira el modo demo")
-    await arExperience.startDemo()
+    elements.arScreen.hidden = true
+    elements.appShell.hidden = false
+    showToast("No se pudo iniciar la camara AR")
   }
 }
 
-// Actualiza los mensajes pequenos que guian al usuario
+// Actualiza los mensajes que guian al usuario
 function updateGuide(status) {
   elements.guideTitle.textContent = status.title
   elements.guideText.textContent = status.text
@@ -228,8 +236,15 @@ function updateGuide(status) {
   elements.guideCard.classList.toggle("is-warning", status.tone === "warning")
 }
 
-// Indica si la vista conserva la escala real o usa ampliacion
+// Indica si el usuario mantiene la escala real
 function updateScaleIndicator(scale) {
+  if (!state.selectedDish) {
+    elements.scaleBadge.textContent = "SIN PLATO"
+    elements.scaleBadge.classList.remove("is-zoomed")
+    elements.resetScaleButton.hidden = true
+    return
+  }
+
   const isRealScale = Math.abs(scale - 1) < 0.02
 
   elements.scaleBadge.textContent =
@@ -239,31 +254,52 @@ function updateScaleIndicator(scale) {
   elements.resetScaleButton.hidden = isRealScale
 }
 
-// Cambia el texto segun AR real o modo demostracion
-function updateMode(mode) {
-  elements.arModeLabel.textContent =
-    mode === "ar" ? "REALIDAD AUMENTADA" : "MODO DEMO 3D"
+// Mantiene visible la etiqueta de realidad aumentada
+function updateMode() {
+  elements.arModeLabel.textContent = "REALIDAD AUMENTADA"
 }
 
-// Muestra controles de giro cuando el plato ya esta colocado
+// Abre el menu cuando la mesa queda confirmada
 function updatePlacedState(placed) {
-  elements.gestureHint.hidden = !placed
-  elements.gestureLayer.classList.toggle("is-active", placed)
+  if (!placed) {
+    state.surfaceConfirmed = false
+    elements.gestureHint.hidden = true
+    elements.gestureLayer.classList.remove("is-active")
+    return
+  }
+
+  state.surfaceConfirmed = true
+
+  if (!state.selectedDish) {
+    elements.arDishName.textContent = "Area lista"
+    elements.scaleBadge.textContent = "ELIGE PLATO"
+    openMenuDrawer()
+    return
+  }
+
+  elements.gestureHint.hidden = false
+  elements.gestureLayer.classList.add("is-active")
 }
 
-// Regresa al menu cuando termina la experiencia
+// Regresa a la pantalla inicial cuando termina AR
 function handleExperienceEnd() {
   elements.arScreen.hidden = true
   elements.appShell.hidden = false
+  state.surfaceConfirmed = false
+  state.selectedDish = null
   closeMenuDrawer()
 }
 
-// Abre la lista de platos dentro de la experiencia
+// Abre el menu dentro de la camara
 function openMenuDrawer() {
+  if (!state.surfaceConfirmed) {
+    return
+  }
+
   elements.menuDrawer.hidden = false
 }
 
-// Cierra la lista de platos
+// Cierra el menu
 function closeMenuDrawer() {
   elements.menuDrawer.hidden = true
 }
@@ -280,9 +316,9 @@ function showToast(message) {
   }, 2800)
 }
 
-// Conecta todos los botones del HTML
+// Conecta los botones de la interfaz
 function wireEvents() {
-  elements.startArButton.addEventListener("click", startSelectedExperience)
+  elements.startArButton.addEventListener("click", startScanningExperience)
   elements.closeArButton.addEventListener("click", () => arExperience.end())
   elements.placeDishButton.addEventListener("click", () => {
     arExperience.placeDish()
@@ -308,7 +344,7 @@ function wireEvents() {
   })
 }
 
-// Prepara la aplicacion completa
+// Prepara toda la aplicacion
 async function initializeApp() {
   wireEvents()
   startWelcome()
@@ -321,8 +357,6 @@ async function initializeApp() {
   } catch (error) {
     console.error(error)
     showToast("No se pudo cargar el menu")
-    elements.compatibilityNote.textContent =
-      "Revisa que menu.json se encuentre junto a index.html"
   }
 }
 
