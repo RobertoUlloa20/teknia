@@ -11,7 +11,14 @@
 <link rel="stylesheet" href="./styles.css?v=5">
 </head>
 <body>
-
+<!--
+  ============================================================
+  INTERFAZ ANTERIOR: LOGIN Y SELECCION DE ROL
+  Se conserva dentro de template para poder recuperarla despues.
+  El contenido de template no se muestra ni se ejecuta.
+  ============================================================
+-->
+<template id="interfaz-anterior-login-rol">
 <!-- NAV TABS -->
 <div class="nav-tabs">
   <div class="ntab on" id="t1" data-screen-target="s-login" data-tab-number="1">① Login</div>
@@ -132,6 +139,88 @@
     </div>
   </div>
 </div>
+</template>
+
+
+<!-- ============================================================
+     PANTALLA DE BIENVENIDA DE TEKNIA
+
+     Esta pantalla aparece al abrir la aplicacion.
+     El CSS se encargara del diseño y de la cascada de particulas.
+     El JavaScript la ocultara y despues iniciara la camara.
+============================================================ -->
+<section
+  class="welcome-screen"
+  id="welcome-screen"
+  aria-label="Bienvenida a TEKNIA"
+>
+
+  <!-- Luces decorativas del fondo -->
+  <div class="welcome-light welcome-light-cyan" aria-hidden="true"></div>
+  <div class="welcome-light welcome-light-violet" aria-hidden="true"></div>
+
+  <!-- Contenido central de la bienvenida -->
+  <div class="welcome-content">
+
+    <p class="welcome-label">
+      EXPERIENCIAS GASTRONOMICAS TECNOLOGICAS
+    </p>
+
+    <!--
+      El logo se guarda como archivo externo para evitar otro bloque
+      Base64 enorme dentro del HTML.
+    -->
+    <div class="welcome-logo-stage">
+
+      <img
+        src="./images/logo-teknia.png"
+        alt="Logo de TEKNIA con un codigo QR sobre un plato"
+        class="welcome-logo"
+      >
+
+      <!--
+        Estas figuras se animaran con CSS para simular que las
+        particulas caen continuamente desde el QR hasta el plato.
+      -->
+      <div class="welcome-particles" aria-hidden="true">
+        <span class="welcome-particle particle-1"></span>
+        <span class="welcome-particle particle-2"></span>
+        <span class="welcome-particle particle-3"></span>
+        <span class="welcome-particle particle-4"></span>
+        <span class="welcome-particle particle-5"></span>
+        <span class="welcome-particle particle-6"></span>
+        <span class="welcome-particle particle-7"></span>
+        <span class="welcome-particle particle-8"></span>
+        <span class="welcome-particle particle-9"></span>
+        <span class="welcome-particle particle-10"></span>
+        <span class="welcome-particle particle-11"></span>
+        <span class="welcome-particle particle-12"></span>
+      </div>
+
+    </div>
+
+    <h1 class="welcome-title">
+      Bienvenidos a <span>TEKNIA</span>
+    </h1>
+
+    <p class="welcome-description">
+      Descubre una nueva forma de visualizar, elegir y organizar
+      los platos que deseas pedir.
+    </p>
+
+    <!-- Indicador visual mientras se prepara la experiencia -->
+    <div class="welcome-loading" aria-hidden="true">
+      <span class="welcome-loading-dot"></span>
+      <span class="welcome-loading-dot"></span>
+      <span class="welcome-loading-dot"></span>
+    </div>
+
+    <p class="welcome-loading-text">
+      Preparando tu experiencia
+    </p>
+
+  </div>
+</section>
 
 <!-- ════════════════════════════════════
      SCREEN 3 · CÁMARA

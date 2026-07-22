@@ -1,4 +1,4 @@
-"use strict";
+ "use strict";
 
 /*
  * ================================================================
@@ -25,7 +25,7 @@
 
 // Guarda el identificador de la pantalla que esta visible actualmente.
 // Al cargar la pagina, la pantalla activa es la de inicio de sesion.
-let activeScreen = "s-login";
+let activeScreen = "s-cam";
 
 // Guarda el objeto MediaStream entregado por el navegador al abrir la camara.
 // Su valor es null mientras no exista una camara activa.
@@ -44,6 +44,15 @@ let toastTimer = null;
 // Numero que identifica cada intento de apertura de camara.
 // Sirve para evitar que dos solicitudes simultaneas se mezclen.
 let cameraRequestId = 0;
+
+// Indica si la pantalla de bienvenida todavía está sobre la cámara.
+// Se utiliza para evitar que visibilitychange intente abrir la cámara antes.
+let welcomeIsActive = true;
+
+// Guarda los temporizadores de la bienvenida para poder cancelarlos al salir.
+let welcomeHideTimer = null;
+let welcomeRemoveTimer = null;
+
 
 
 /* ----------------------------------------------------------------
@@ -857,6 +866,52 @@ function initializeEventListeners() {
   }
 }
 
+
+/* ----------------------------------------------------------------
+ * PANTALLA DE BIENVENIDA
+ * ---------------------------------------------------------------- */
+
+/**
+ * Muestra la bienvenida durante unos segundos, la desvanece y después
+ * solicita acceso a la cámara.
+ *
+ * La cámara se inicia al terminar la bienvenida para que el usuario primero
+ * vea el logotipo y la animación completa.
+ */
+function startWelcomeExperience() {
+  const welcomeScreen = getElement("welcome-screen");
+
+  // Si el HTML no contiene la bienvenida, abre la cámara directamente.
+  if (!welcomeScreen) {
+    welcomeIsActive = false;
+    startCamera();
+    return;
+  }
+
+  // Mantiene visible la animación durante 4 segundos.
+  welcomeHideTimer = window.setTimeout(() => {
+    // Esta clase activa la transición de salida definida en styles.css.
+    welcomeScreen.classList.add("is-closing");
+
+    // Espera a que termine la transición antes de retirar la capa.
+    welcomeRemoveTimer = window.setTimeout(() => {
+      welcomeScreen.hidden = true;
+      welcomeIsActive = false;
+
+      // Abre la cámara después de finalizar la presentación.
+      startCamera();
+    }, 900);
+  }, 4000);
+}
+
+/**
+ * Cancela los temporizadores pendientes de la bienvenida.
+ */
+function clearWelcomeTimers() {
+  window.clearTimeout(welcomeHideTimer);
+  window.clearTimeout(welcomeRemoveTimer);
+}
+
 /* ----------------------------------------------------------------
  * EVENTOS GENERALES DEL NAVEGADOR
  * ---------------------------------------------------------------- */
@@ -870,6 +925,8 @@ updateClock();
 // Actualiza el reloj cada 30 segundos para mantenerlo sincronizado.
 window.setInterval(updateClock, 30000);
 
+// Muestra la presentación inicial y luego abre la cámara.
+startWelcomeExperience();
 /*
  * No se detiene la cámara simplemente cuando document.hidden cambia.
  *
