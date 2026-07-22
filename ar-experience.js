@@ -85,7 +85,6 @@ export class ARExperience {
 
     // Guarda funciones enlazadas para poder retirarlas despues
     this.boundRenderXR = this.renderXR.bind(this)
-    this.boundRenderDemo = this.renderDemo.bind(this)
     this.boundSessionEnd = this.handleSessionEnd.bind(this)
     this.boundSelect = this.handleXRSelect.bind(this)
     this.boundResize = this.handleResize.bind(this)

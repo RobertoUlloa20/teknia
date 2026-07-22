@@ -2,7 +2,9 @@
 
 import { ARExperience } from "./ar-experience.js"
 
-const APP_VERSION = "14"
+const APP_VERSION = "15"
+
+window.__tekniaModuleLoaded = true
 
 const state = {
   menu: [],
