@@ -17,7 +17,7 @@
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap"
     rel="stylesheet"
   >
-  <link rel="stylesheet" href="./styles.css?v=16">
+  <link rel="stylesheet" href="./styles.css?v=17">
 
   <!-- MODULOS 3D FIJADOS A UNA VERSION CONCRETA -->
   <script type="importmap">
@@ -228,43 +228,7 @@
   <div class="toast" id="toast"></div>
 
 
-  <!-- SALIDA DE SEGURIDAD PARA LA BIENVENIDA -->
-  <script>
-    window.setTimeout(() => {
-      const welcome = document.getElementById("welcome-screen")
-      const app = document.getElementById("app-shell")
-      const note = document.getElementById("compatibility-note")
-      const button = document.getElementById("start-ar-button")
+  <script src="./script.js?v=17" defer></script>
 
-      if (!welcome || welcome.hidden) {
-        return
-      }
-
-      welcome.classList.add("is-closing")
-
-      window.setTimeout(() => {
-        welcome.hidden = true
-
-        if (app) {
-          app.hidden = false
-        }
-
-        if (!window.__tekniaModuleLoaded) {
-          if (note) {
-            note.textContent =
-              "No se pudo cargar el modulo AR revisa la conexion y recarga"
-          }
-
-          if (button) {
-            button.disabled = true
-            button.querySelector("span").textContent =
-              "NO SE PUDO CARGAR EL MODULO AR"
-          }
-        }
-      }, 850)
-    }, 4500)
-  </script>
-
-  <script src="./script.js?v=16" defer></script>
 </body>
 </html>

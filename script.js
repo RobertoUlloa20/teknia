@@ -1,6 +1,6 @@
 "use strict"
 
-const APP_VERSION = "16"
+const APP_VERSION = "17"
 
 const state = {
   menu: [],
@@ -414,3 +414,4 @@ async function initializeApp() {
 }
 
 initializeApp()
+console.info("TEKNIA VERSION 17 CARGADA")
