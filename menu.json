@@ -1,0 +1,13 @@
+[
+  {
+    "id": "plato-real",
+    "name": "Plato real TEKNIA",
+    "shortDescription": "Modelo del plato principal",
+    "description": "Plato visualizado mediante realidad aumentada",
+    "price": "$18",
+    "icon": "🍽️",
+    "model": "./models/plato-real.glb",
+    "diameterM": 0.28,
+    "fallbackColor": "#a95f38"
+  }
+]
