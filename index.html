@@ -6,7 +6,7 @@
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
   >
-  <meta name="theme-color" content="#03050a">
+  <meta name="theme-color" content="#02050a">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,7 +17,7 @@
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap"
     rel="stylesheet"
   >
-  <link rel="stylesheet" href="./styles.css?v=18">
+  <link rel="stylesheet" href="./styles.css?v=19">
 
   <!-- MODULOS 3D FIJADOS A UNA VERSION CONCRETA -->
   <script type="importmap">
@@ -31,6 +31,130 @@
 </head>
 
 <body>
+  <!-- LA CAMARA QUEDA PREPARADA DETRAS DE LA BIENVENIDA -->
+  <main class="camera-screen" id="camera-screen">
+    <video
+      class="camera-feed"
+      id="camera-feed"
+      autoplay
+      muted
+      playsinline
+      webkit-playsinline
+    ></video>
+
+    <div class="model-stage" id="model-stage"></div>
+
+    <div class="camera-shade" aria-hidden="true"></div>
+
+    <header class="camera-topbar">
+      <button
+        class="round-button"
+        id="restart-camera-button"
+        type="button"
+        aria-label="Reiniciar camara"
+      >
+        ↻
+      </button>
+
+      <div class="camera-title">
+        <strong id="camera-title">Escaneando area de servicio</strong>
+        <span>MENU DE REALIDAD AUMENTADA</span>
+      </div>
+
+      <div class="scale-badge" id="scale-badge">SIN PLATO</div>
+    </header>
+
+    <section class="guide-card" id="guide-card">
+      <div class="guide-icon" id="guide-icon">⌁</div>
+      <div>
+        <strong id="guide-title">Enfoca el lugar de tu plato</strong>
+        <span id="guide-text">
+          Apunta al espacio libre que tienes frente a ti y manten el telefono estable
+        </span>
+      </div>
+    </section>
+
+    <div class="service-zone" id="service-zone" aria-hidden="true">
+      <span class="service-zone-ring"></span>
+      <span class="service-zone-cross"></span>
+      <small id="service-zone-label">BUSCANDO MESA</small>
+    </div>
+
+    <div class="camera-error" id="camera-error" hidden>
+      <div>
+        <strong>No se pudo abrir la camara</strong>
+        <p id="camera-error-text">
+          Revisa el permiso de camara y vuelve a intentarlo
+        </p>
+        <button id="retry-camera-button" type="button">
+          ACTIVAR CAMARA
+        </button>
+      </div>
+    </div>
+
+    <div class="bottom-controls">
+      <button
+        class="secondary-button"
+        id="rescan-button"
+        type="button"
+        hidden
+      >
+        REUBICAR
+      </button>
+
+      <button
+        class="menu-button"
+        id="open-menu-button"
+        type="button"
+        hidden
+      >
+        <span>MENU</span>
+        <small>Seleccionar plato</small>
+      </button>
+
+      <button
+        class="secondary-button"
+        id="reset-scale-button"
+        type="button"
+        hidden
+      >
+        ESCALA 1:1
+      </button>
+    </div>
+
+    <div class="gesture-hint" id="gesture-hint" hidden>
+      Desliza horizontalmente para girar y usa dos dedos para ampliar
+    </div>
+
+    <div class="gesture-layer" id="gesture-layer"></div>
+
+    <!-- EL MENU APARECE SOLO CUANDO EL AREA ESTA LISTA -->
+    <aside class="menu-drawer" id="menu-drawer" hidden>
+      <div class="drawer-handle"></div>
+
+      <div class="drawer-heading">
+        <div>
+          <p>MENU TEKNIA</p>
+          <h2>Selecciona tu plato</h2>
+          <span>
+            El modelo aparecera en el area que acabas de enfocar
+          </span>
+        </div>
+
+        <button
+          class="drawer-close"
+          id="close-menu-button"
+          type="button"
+          aria-label="Cerrar menu"
+        >
+          ×
+        </button>
+      </div>
+
+      <div class="drawer-menu-list" id="drawer-menu-list"></div>
+    </aside>
+  </main>
+
   <!-- BIENVENIDA PRINCIPAL -->
   <section class="welcome-screen" id="welcome-screen">
     <div class="welcome-grid" aria-hidden="true"></div>
@@ -58,7 +182,7 @@
       </div>
 
       <h1>Bienvenidos a <span>TEKNIA</span></h1>
-      <p>Primero prepara tu espacio y despues descubre el menu</p>
+      <p>Enfoca tu mesa y descubre el menu</p>
 
       <div class="welcome-loader" aria-hidden="true">
         <span></span>
@@ -68,167 +192,8 @@
     </div>
   </section>
 
-  <!-- PANTALLA PREVIA AL ESCANEO -->
-  <main class="app-shell" id="app-shell">
-    <header class="app-header">
-      <div class="brand-mini">
-        <img src="./images/logo-teknia.png" alt="">
-        <div>
-          <strong>TEKNIA</strong>
-          <span>MENU DE REALIDAD AUMENTADA</span>
-        </div>
-      </div>
-
-      <button class="icon-button" id="help-button" type="button" aria-label="Ayuda">
-        ?
-      </button>
-    </header>
-
-    <section class="hero-card scan-first-card">
-      <p class="eyebrow">PRIMER PASO</p>
-      <h2>Prepara el espacio de tu plato</h2>
-      <p>
-        Enfoca el area libre que tienes frente a ti sin necesidad de escanear
-        toda la mesa
-      </p>
-
-      <div class="flow-preview">
-        <article class="flow-step is-current">
-          <span>1</span>
-          <div>
-            <strong>Escanear el area</strong>
-            <small>Detectar la superficie horizontal</small>
-          </div>
-        </article>
-
-        <article class="flow-step">
-          <span>2</span>
-          <div>
-            <strong>Confirmar la posicion</strong>
-            <small>Crear una zona invisible estable</small>
-          </div>
-        </article>
-
-        <article class="flow-step">
-          <span>3</span>
-          <div>
-            <strong>Elegir el plato</strong>
-            <small>Abrir el menu dentro de la camara</small>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <button class="primary-button" id="start-ar-button" type="button" disabled>
-      <span>COMPROBANDO DISPOSITIVO</span>
-      <small>La camara AR se abre despues de tocar este boton</small>
-    </button>
-
-    <p class="compatibility-note" id="compatibility-note">
-      Comprobando compatibilidad con realidad aumentada
-    </p>
-  </main>
-
-  <!-- EXPERIENCIA AR -->
-  <section class="ar-screen" id="ar-screen" hidden>
-    <div class="ar-stage" id="ar-stage"></div>
-
-    <div class="ar-overlay" id="ar-overlay">
-      <div class="ar-topbar">
-        <button class="ar-round-button" id="close-ar-button" type="button">
-          ×
-        </button>
-
-        <div class="ar-title-block">
-          <strong id="ar-dish-name">Escaneando area de servicio</strong>
-          <span id="ar-mode-label">REALIDAD AUMENTADA</span>
-        </div>
-
-        <div class="scale-badge" id="scale-badge">SIN PLATO</div>
-      </div>
-
-      <div class="guide-card" id="guide-card">
-        <div class="guide-icon" id="guide-icon">⌁</div>
-        <div>
-          <strong id="guide-title">Enfoca el area de tu plato</strong>
-          <span id="guide-text">
-            Manten el telefono a una altura moderada y mueve la camara lentamente
-          </span>
-        </div>
-      </div>
-
-      <div class="screen-center-guide" id="screen-center-guide" aria-hidden="true">
-        <span></span>
-      </div>
-
-      <div class="ar-bottom-controls">
-        <button class="secondary-button" id="change-dish-button" type="button" hidden>
-          CAMBIAR PLATO
-        </button>
-
-        <button class="place-button" id="place-dish-button" type="button" hidden>
-          CONFIRMAR AREA
-        </button>
-
-        <button class="secondary-button" id="reset-scale-button" type="button" hidden>
-          RESTABLECER 1:1
-        </button>
-      </div>
-
-      <div class="gesture-hint" id="gesture-hint" hidden>
-        Desliza horizontalmente para girar y usa dos dedos para ampliar
-      </div>
-
-      <div class="ar-gesture-layer" id="ar-gesture-layer" aria-hidden="true"></div>
-
-      <!-- EL MENU SOLO APARECE DESPUES DE CONFIRMAR LA MESA -->
-      <aside class="menu-drawer" id="menu-drawer" hidden>
-        <div class="drawer-handle"></div>
-
-        <div class="drawer-heading">
-          <div>
-            <p class="eyebrow">SEGUNDO PASO</p>
-            <h3>Ahora elige tu plato</h3>
-            <p class="drawer-subtitle">
-              El modelo aparecera en la zona que acabas de confirmar
-            </p>
-          </div>
-
-          <button class="drawer-close" id="drawer-close-button" type="button">
-            ×
-          </button>
-        </div>
-
-        <div class="drawer-menu-list" id="drawer-menu-list"></div>
-      </aside>
-    </div>
-  </section>
-
-  <!-- AYUDA -->
-  <dialog class="help-dialog" id="help-dialog">
-    <button class="dialog-close" id="help-close-button" type="button">×</button>
-
-    <p class="eyebrow">COMO FUNCIONA</p>
-    <h2>Primero la mesa y despues el menu</h2>
-
-    <ol>
-      <li>Toca escanear area de servicio</li>
-      <li>Enfoca el espacio libre que tienes frente a ti</li>
-      <li>Confirma la zona cuando la superficie sea estable</li>
-      <li>Selecciona un plato del menu</li>
-      <li>Desliza horizontalmente para girarlo</li>
-    </ol>
-
-    <p>
-      En computadora no se simula una camara porque la experiencia real
-      necesita un dispositivo compatible con WebXR AR
-    </p>
-  </dialog>
-
   <div class="toast" id="toast"></div>
 
-
-  <script src="./script.js?v=18" defer></script>
-
+  <script src="./script.js?v=19" defer></script>
 </body>
 </html>

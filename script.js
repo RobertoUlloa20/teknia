@@ -1,54 +1,252 @@
 "use strict"
 
-const APP_VERSION = "18"
+const APP_VERSION = "19"
 
 const state = {
+  stream: null,
   menu: [],
   selectedDish: null,
-  arSupported: false,
-  surfaceConfirmed: false,
+  surfaceReady: false,
+  scanTimer: null,
   toastTimer: null,
-  arModulePromise: null,
-  arExperience: null
+  rendererPromise: null,
+  renderer: null,
+  orientationAvailable: false,
+  lastOrientation: null,
+  stableScore: 0
 }
 
 const elements = {
   welcomeScreen: document.getElementById("welcome-screen"),
-  appShell: document.getElementById("app-shell"),
-  drawerMenuList: document.getElementById("drawer-menu-list"),
-  startArButton: document.getElementById("start-ar-button"),
-  compatibilityNote: document.getElementById("compatibility-note"),
-  arScreen: document.getElementById("ar-screen"),
-  arStage: document.getElementById("ar-stage"),
-  arDishName: document.getElementById("ar-dish-name"),
-  arModeLabel: document.getElementById("ar-mode-label"),
-  closeArButton: document.getElementById("close-ar-button"),
+  cameraFeed: document.getElementById("camera-feed"),
+  cameraError: document.getElementById("camera-error"),
+  cameraErrorText: document.getElementById("camera-error-text"),
+  retryCameraButton: document.getElementById("retry-camera-button"),
+  restartCameraButton: document.getElementById("restart-camera-button"),
+  cameraTitle: document.getElementById("camera-title"),
   guideCard: document.getElementById("guide-card"),
   guideIcon: document.getElementById("guide-icon"),
   guideTitle: document.getElementById("guide-title"),
   guideText: document.getElementById("guide-text"),
-  placeDishButton: document.getElementById("place-dish-button"),
-  changeDishButton: document.getElementById("change-dish-button"),
+  serviceZone: document.getElementById("service-zone"),
+  serviceZoneLabel: document.getElementById("service-zone-label"),
+  openMenuButton: document.getElementById("open-menu-button"),
+  rescanButton: document.getElementById("rescan-button"),
   resetScaleButton: document.getElementById("reset-scale-button"),
   scaleBadge: document.getElementById("scale-badge"),
   gestureHint: document.getElementById("gesture-hint"),
-  gestureLayer: document.getElementById("ar-gesture-layer"),
+  gestureLayer: document.getElementById("gesture-layer"),
   menuDrawer: document.getElementById("menu-drawer"),
-  drawerCloseButton: document.getElementById("drawer-close-button"),
-  helpButton: document.getElementById("help-button"),
-  helpDialog: document.getElementById("help-dialog"),
-  helpCloseButton: document.getElementById("help-close-button"),
+  closeMenuButton: document.getElementById("close-menu-button"),
+  drawerMenuList: document.getElementById("drawer-menu-list"),
+  modelStage: document.getElementById("model-stage"),
   toast: document.getElementById("toast")
 }
 
-// Oculta la bienvenida tambien desde JavaScript cuando este archivo carga
-function startWelcome() {
+// Muestra la camara directamente despues de la bienvenida
+async function startApplication() {
+  wireEvents()
+  await loadMenu()
+
   window.setTimeout(() => {
-    elements.welcomeScreen?.classList.add("is-closing")
-  }, 3000)
+    elements.welcomeScreen.classList.add("is-closing")
+  }, 2900)
+
+  window.setTimeout(() => {
+    startCamera()
+  }, 1300)
 }
 
-// Carga la informacion del menu sin cargar todavia Three js
+// Solicita la camara trasera mediante la API disponible en mas navegadores
+async function startCamera() {
+  stopCamera()
+
+  elements.cameraError.hidden = true
+  setGuide(
+    "Abriendo la camara",
+    "Acepta el permiso para enfocar el area de tu plato",
+    "◌",
+    "normal"
+  )
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    showCameraError(
+      "Este navegador no permite utilizar la camara abre la pagina en Chrome Safari o Samsung Internet"
+    )
+    return
+  }
+
+  const constraints = [
+    {
+      video: {
+        facingMode: {
+          ideal: "environment"
+        },
+        width: {
+          ideal: 1280
+        },
+        height: {
+          ideal: 720
+        }
+      },
+      audio: false
+    },
+    {
+      video: {
+        facingMode: {
+          ideal: "environment"
+        }
+      },
+      audio: false
+    },
+    {
+      video: true,
+      audio: false
+    }
+  ]
+
+  let mediaStream = null
+  let lastError = null
+
+  for (const option of constraints) {
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia(option)
+      break
+    } catch (error) {
+      lastError = error
+
+      if (
+        error.name === "NotAllowedError" ||
+        error.name === "PermissionDeniedError"
+      ) {
+        break
+      }
+    }
+  }
+
+  if (!mediaStream) {
+    showCameraError(getCameraErrorMessage(lastError))
+    return
+  }
+
+  state.stream = mediaStream
+  elements.cameraFeed.srcObject = mediaStream
+  elements.cameraFeed.muted = true
+  elements.cameraFeed.playsInline = true
+
+  try {
+    await elements.cameraFeed.play()
+  } catch (error) {
+    console.error(error)
+    showCameraError(
+      "La camara recibio permiso pero el navegador no pudo reproducirla toca Activar camara"
+    )
+    return
+  }
+
+  beginSurfaceScan()
+}
+
+// Detiene las pistas antes de volver a abrir la camara
+function stopCamera() {
+  window.clearTimeout(state.scanTimer)
+
+  if (state.stream) {
+    state.stream.getTracks().forEach((track) => {
+      track.stop()
+    })
+
+    state.stream = null
+  }
+
+  elements.cameraFeed.srcObject = null
+}
+
+// Convierte errores tecnicos en mensajes faciles de entender
+function getCameraErrorMessage(error) {
+  switch (error?.name) {
+    case "NotAllowedError":
+    case "PermissionDeniedError":
+      return "El permiso de camara esta bloqueado habilitalo en la configuracion del navegador"
+
+    case "NotFoundError":
+    case "DevicesNotFoundError":
+      return "No se encontro una camara disponible"
+
+    case "NotReadableError":
+    case "TrackStartError":
+      return "Otra aplicacion esta utilizando la camara cierra otras aplicaciones y vuelve a intentar"
+
+    default:
+      return "No se pudo iniciar la camara recarga la pagina y vuelve a intentar"
+  }
+}
+
+// Muestra una pantalla de recuperacion cuando la camara falla
+function showCameraError(message) {
+  elements.cameraErrorText.textContent = message
+  elements.cameraError.hidden = false
+
+  setGuide(
+    "Camara no disponible",
+    "Revisa el permiso y vuelve a intentarlo",
+    "!",
+    "warning"
+  )
+}
+
+// Inicia la verificacion de estabilidad sobre la zona central
+function beginSurfaceScan() {
+  state.surfaceReady = false
+  state.stableScore = 0
+  state.lastOrientation = null
+
+  elements.openMenuButton.hidden = true
+  elements.rescanButton.hidden = true
+  elements.serviceZone.classList.remove("is-ready")
+  elements.serviceZone.classList.remove("has-dish")
+  elements.serviceZoneLabel.textContent = "BUSCANDO MESA"
+  elements.cameraTitle.textContent = "Escaneando area de servicio"
+  elements.scaleBadge.textContent = "SIN PLATO"
+
+  setGuide(
+    "Enfoca el lugar de tu plato",
+    "Apunta al espacio libre y manten el telefono estable",
+    "⌁",
+    "normal"
+  )
+
+  window.clearTimeout(state.scanTimer)
+
+  state.scanTimer = window.setTimeout(() => {
+    markSurfaceReady()
+  }, 2800)
+}
+
+// Marca la zona central como area lista
+function markSurfaceReady() {
+  if (!state.stream) {
+    return
+  }
+
+  state.surfaceReady = true
+  elements.openMenuButton.hidden = false
+  elements.rescanButton.hidden = false
+  elements.serviceZone.classList.add("is-ready")
+  elements.serviceZoneLabel.textContent = "AREA DE MESA LISTA"
+  elements.cameraTitle.textContent = "Area de servicio lista"
+  elements.scaleBadge.textContent =
+    state.selectedDish ? "ESCALA 1:1" : "ELIGE PLATO"
+
+  setGuide(
+    "Area de mesa lista",
+    "Toca Menu para seleccionar el plato que deseas visualizar",
+    "✓",
+    "ready"
+  )
+}
+
+// Carga menu json sin cargar todavia Three js
 async function loadMenu() {
   const response = await fetch(`./menu.json?v=${APP_VERSION}`, {
     cache: "no-store"
@@ -59,236 +257,135 @@ async function loadMenu() {
   }
 
   state.menu = await response.json()
-  renderDrawerMenu()
+  renderMenu()
 }
 
-// Crea las tarjetas que apareceran despues de confirmar la mesa
-function renderDrawerMenu() {
+// Dibuja todas las tarjetas del menu
+function renderMenu() {
   elements.drawerMenuList.replaceChildren()
 
   state.menu.forEach((dish) => {
-    elements.drawerMenuList.append(createMenuCard(dish))
+    const button = document.createElement("button")
+
+    button.type = "button"
+    button.className = "menu-card"
+    button.dataset.dishId = dish.id
+
+    button.innerHTML = `
+      <span class="menu-visual">${dish.icon}</span>
+      <span>
+        <strong>${dish.name}</strong>
+        <p>${dish.shortDescription}</p>
+        <footer>
+          <span>${Math.round(dish.diameterM * 100)} cm</span>
+          <span>${dish.price}</span>
+        </footer>
+      </span>
+    `
+
+    button.addEventListener("click", async () => {
+      await selectDish(dish.id)
+    })
+
+    elements.drawerMenuList.append(button)
   })
 }
 
-// Crea una tarjeta para cada plato
-function createMenuCard(dish) {
-  const button = document.createElement("button")
-
-  button.type = "button"
-  button.className = "menu-card"
-  button.dataset.dishId = dish.id
-
-  button.innerHTML = `
-    <span class="menu-visual">${dish.icon}</span>
-    <span>
-      <strong>${dish.name}</strong>
-      <p>${dish.shortDescription}</p>
-      <footer>
-        <span>${Math.round(dish.diameterM * 100)} cm</span>
-        <span>${dish.price}</span>
-      </footer>
-    </span>
-  `
-
-  button.addEventListener("click", async () => {
-    await selectDish(dish.id)
-  })
-
-  return button
-}
-
-// Carga el modulo AR solo cuando el usuario decide escanear
-async function ensureARExperience() {
-  if (state.arExperience) {
-    return state.arExperience
-  }
-
-  if (!state.arModulePromise) {
-    state.arModulePromise = import(`./ar-experience.js?v=${APP_VERSION}`)
-  }
-
-  const module = await state.arModulePromise
-
-  state.arExperience = new module.ARExperience({
-    stage: elements.arStage,
-    gestureLayer: elements.gestureLayer,
-    placeButton: elements.placeDishButton,
-    onStatusChange: updateGuide,
-    onScaleChange: updateScaleIndicator,
-    onModeChange: updateMode,
-    onPlacedChange: updatePlacedState,
-    onSessionEnd: handleExperienceEnd,
-    onMessage: showToast
-  })
-
-  await state.arExperience.initialize()
-
-  return state.arExperience
-}
-
-// Selecciona un plato despues de confirmar el area
-async function selectDish(dishId) {
-  if (!state.surfaceConfirmed) {
-    showToast("Primero confirma el area de la mesa")
+// Abre el menu solo despues de preparar el area
+function openMenu() {
+  if (!state.surfaceReady) {
+    showToast("Primero manten el telefono estable sobre la mesa")
     return
   }
 
+  elements.menuDrawer.hidden = false
+}
+
+// Cierra el menu
+function closeMenu() {
+  elements.menuDrawer.hidden = true
+}
+
+// Carga el modelo sobre la imagen de la camara
+async function selectDish(dishId) {
   const dish = state.menu.find((item) => item.id === dishId)
 
-  if (!dish) {
+  if (!dish || !state.surfaceReady) {
     return
   }
 
-  const arExperience = await ensureARExperience()
-
   state.selectedDish = dish
+  closeMenu()
 
   document.querySelectorAll(".menu-card").forEach((card) => {
     card.classList.toggle("is-selected", card.dataset.dishId === dish.id)
   })
 
-  elements.arDishName.textContent = dish.name
+  elements.cameraTitle.textContent = dish.name
   elements.scaleBadge.textContent = "CARGANDO"
-  closeMenuDrawer()
 
-  updateGuide({
-    key: "loading-selected-dish",
-    title: "Preparando el plato",
-    text: "Estamos ajustando el modelo a sus dimensiones reales",
-    icon: "◌",
-    tone: "normal"
-  })
+  setGuide(
+    "Preparando el plato",
+    "Estamos ajustando el modelo al area enfocada",
+    "◌",
+    "normal"
+  )
 
   try {
-    await arExperience.setDish(dish)
+    const renderer = await ensureRenderer()
+    await renderer.setDish(dish)
 
     elements.scaleBadge.textContent = "ESCALA 1:1"
-    elements.changeDishButton.hidden = false
-    updatePlacedState(true)
+    elements.resetScaleButton.hidden = true
+    elements.gestureHint.hidden = false
+    elements.gestureLayer.classList.add("is-active")
+    elements.serviceZone.classList.add("has-dish")
 
-    updateGuide({
-      key: "dish-ready",
-      title: "Plato colocado a escala real",
-      text: "Mueve el telefono para verlo desde arriba o desde los lados",
-      icon: "✓",
-      tone: "ready"
-    })
+    setGuide(
+      "Plato listo",
+      "Desliza horizontalmente para girarlo y mueve el telefono para observar la escena",
+      "✓",
+      "ready"
+    )
   } catch (error) {
     console.error(error)
     elements.scaleBadge.textContent = "ERROR"
-    showToast("No se pudo cargar el modelo")
+
+    setGuide(
+      "No se pudo cargar el plato",
+      "Revisa la conexion y vuelve a seleccionar el modelo",
+      "!",
+      "warning"
+    )
   }
 }
 
-// Comprueba WebXR sin cargar Three js
-async function checkArSupport() {
-  if (!window.isSecureContext || !navigator.xr) {
-    setUnsupportedDevice()
-    return
+// Carga Three js unicamente cuando se selecciona un plato
+async function ensureRenderer() {
+  if (state.renderer) {
+    return state.renderer
   }
 
-  try {
-    state.arSupported =
-      await navigator.xr.isSessionSupported("immersive-ar")
-  } catch (error) {
-    console.warn("No se pudo comprobar WebXR", error)
-    state.arSupported = false
+  if (!state.rendererPromise) {
+    state.rendererPromise =
+      import(`./compatible-ar.js?v=${APP_VERSION}`)
   }
 
-  if (!state.arSupported) {
-    setUnsupportedDevice()
-    return
-  }
+  const module = await state.rendererPromise
 
-  elements.compatibilityNote.textContent =
-    "AR real disponible en este dispositivo"
+  state.renderer = new module.CompatibleAR({
+    stage: elements.modelStage,
+    gestureLayer: elements.gestureLayer,
+    onScaleChange: updateScale
+  })
 
-  elements.startArButton.disabled = false
-  elements.startArButton.querySelector("span").textContent =
-    "ESCANEAR AREA DE SERVICIO"
+  await state.renderer.initialize()
+
+  return state.renderer
 }
 
-// Configura la interfaz cuando el equipo no permite AR real
-function setUnsupportedDevice() {
-  state.arSupported = false
-
-  elements.compatibilityNote.textContent =
-    "Abre esta pagina en un telefono Android compatible con WebXR AR"
-
-  elements.startArButton.disabled = true
-  elements.startArButton.querySelector("span").textContent =
-    "AR NO DISPONIBLE EN ESTE EQUIPO"
-
-  elements.startArButton.querySelector("small").textContent =
-    "En computadora no se mostrara un plato sin camara"
-}
-
-// Abre la camara AR sin seleccionar un plato primero
-async function startScanningExperience() {
-  if (!state.arSupported) {
-    showToast("Usa un telefono compatible con WebXR AR")
-    return
-  }
-
-  elements.startArButton.disabled = true
-  elements.startArButton.querySelector("span").textContent =
-    "CARGANDO CAMARA AR"
-
-  try {
-    const arExperience = await ensureARExperience()
-
-    state.selectedDish = null
-    state.surfaceConfirmed = false
-
-    elements.arDishName.textContent = "Escaneando area de servicio"
-    elements.scaleBadge.textContent = "SIN PLATO"
-    elements.changeDishButton.hidden = true
-    elements.gestureHint.hidden = true
-    elements.gestureLayer.classList.remove("is-active")
-    closeMenuDrawer()
-
-    await arExperience.clearDish()
-
-    elements.arScreen.hidden = false
-    elements.appShell.hidden = true
-
-    await arExperience.startAR()
-  } catch (error) {
-    console.error(error)
-
-    elements.arScreen.hidden = true
-    elements.appShell.hidden = false
-    elements.startArButton.disabled = false
-    elements.startArButton.querySelector("span").textContent =
-      "ESCANEAR AREA DE SERVICIO"
-
-    showToast("No se pudo cargar la camara AR")
-
-    elements.compatibilityNote.textContent =
-      "Error al cargar Three js o WebXR revisa la conexion"
-  }
-}
-
-// Actualiza los mensajes de escaneo
-function updateGuide(status) {
-  elements.guideTitle.textContent = status.title
-  elements.guideText.textContent = status.text
-  elements.guideIcon.textContent = status.icon
-
-  elements.guideCard.classList.toggle("is-ready", status.tone === "ready")
-  elements.guideCard.classList.toggle("is-warning", status.tone === "warning")
-}
-
-// Actualiza la etiqueta de escala
-function updateScaleIndicator(scale) {
-  if (!state.selectedDish) {
-    elements.scaleBadge.textContent = "SIN PLATO"
-    elements.scaleBadge.classList.remove("is-zoomed")
-    elements.resetScaleButton.hidden = true
-    return
-  }
-
+// Actualiza la etiqueta cuando el usuario amplia la vista
+function updateScale(scale) {
   const isRealScale = Math.abs(scale - 1) < 0.02
 
   elements.scaleBadge.textContent =
@@ -298,61 +395,17 @@ function updateScaleIndicator(scale) {
   elements.resetScaleButton.hidden = isRealScale
 }
 
-// Mantiene la etiqueta de realidad aumentada
-function updateMode() {
-  elements.arModeLabel.textContent = "REALIDAD AUMENTADA"
+// Actualiza los mensajes pequenos de la interfaz
+function setGuide(title, text, icon, tone) {
+  elements.guideTitle.textContent = title
+  elements.guideText.textContent = text
+  elements.guideIcon.textContent = icon
+
+  elements.guideCard.classList.toggle("is-ready", tone === "ready")
+  elements.guideCard.classList.toggle("is-warning", tone === "warning")
 }
 
-// Abre el menu despues de confirmar la superficie
-function updatePlacedState(placed) {
-  if (!placed) {
-    state.surfaceConfirmed = false
-    elements.gestureHint.hidden = true
-    elements.gestureLayer.classList.remove("is-active")
-    return
-  }
-
-  state.surfaceConfirmed = true
-
-  if (!state.selectedDish) {
-    elements.arDishName.textContent = "Area lista"
-    elements.scaleBadge.textContent = "ELIGE PLATO"
-    openMenuDrawer()
-    return
-  }
-
-  elements.gestureHint.hidden = false
-  elements.gestureLayer.classList.add("is-active")
-}
-
-// Regresa a la pantalla inicial al cerrar AR
-function handleExperienceEnd() {
-  elements.arScreen.hidden = true
-  elements.appShell.hidden = false
-  elements.startArButton.disabled = false
-  elements.startArButton.querySelector("span").textContent =
-    "ESCANEAR AREA DE SERVICIO"
-
-  state.surfaceConfirmed = false
-  state.selectedDish = null
-  closeMenuDrawer()
-}
-
-// Abre el menu dentro de la camara
-function openMenuDrawer() {
-  if (!state.surfaceConfirmed) {
-    return
-  }
-
-  elements.menuDrawer.hidden = false
-}
-
-// Cierra el menu
-function closeMenuDrawer() {
-  elements.menuDrawer.hidden = true
-}
-
-// Muestra un mensaje temporal
+// Muestra mensajes temporales
 function showToast(message) {
   elements.toast.textContent = message
   elements.toast.classList.add("is-visible")
@@ -364,54 +417,43 @@ function showToast(message) {
   }, 2800)
 }
 
-// Conecta los botones de la interfaz
+// Conecta todos los controles
 function wireEvents() {
-  elements.startArButton.addEventListener("click", startScanningExperience)
-
-  elements.closeArButton.addEventListener("click", async () => {
-    await state.arExperience?.end()
-  })
-
-  elements.placeDishButton.addEventListener("click", () => {
-    state.arExperience?.placeDish()
-  })
+  elements.retryCameraButton.addEventListener("click", startCamera)
+  elements.restartCameraButton.addEventListener("click", startCamera)
+  elements.openMenuButton.addEventListener("click", openMenu)
+  elements.closeMenuButton.addEventListener("click", closeMenu)
+  elements.rescanButton.addEventListener("click", beginSurfaceScan)
 
   elements.resetScaleButton.addEventListener("click", () => {
-    state.arExperience?.resetInspectionScale()
+    state.renderer?.resetScale()
   })
 
-  elements.changeDishButton.addEventListener("click", openMenuDrawer)
-  elements.drawerCloseButton.addEventListener("click", closeMenuDrawer)
-
-  elements.helpButton.addEventListener("click", () => {
-    elements.helpDialog.showModal()
-  })
-
-  elements.helpCloseButton.addEventListener("click", () => {
-    elements.helpDialog.close()
-  })
-
-  elements.helpDialog.addEventListener("click", (event) => {
-    if (event.target === elements.helpDialog) {
-      elements.helpDialog.close()
+  document.addEventListener("visibilitychange", () => {
+    if (
+      document.visibilityState === "visible" &&
+      state.stream &&
+      elements.cameraFeed.paused
+    ) {
+      elements.cameraFeed.play().catch(() => {})
     }
   })
+
+  window.addEventListener("pagehide", stopCamera)
+  window.addEventListener("beforeunload", stopCamera)
 }
 
-// Inicia la parte visual sin depender del modulo AR
-async function initializeApp() {
-  wireEvents()
-  startWelcome()
+// Inicia la aplicacion y captura errores de carga
+startApplication().catch((error) => {
+  console.error(error)
 
-  try {
-    await loadMenu()
-  } catch (error) {
-    console.error(error)
-    showToast("No se pudo cargar el menu")
-  }
+  window.setTimeout(() => {
+    elements.welcomeScreen.classList.add("is-closing")
+  }, 1000)
 
-  await checkArSupport()
-}
+  showCameraError(
+    "No se pudo preparar la aplicacion revisa los archivos del proyecto"
+  )
+})
 
-initializeApp()
-console.info("TEKNIA VERSION 18 CARGADA")
+console.info("TEKNIA VERSION 19 CARGADA")
