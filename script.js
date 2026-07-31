@@ -1,6 +1,6 @@
 "use strict"
 
-const APP_VERSION = "26"
+const APP_VERSION = "28"
 
 const state = {
   stream: null,
@@ -275,9 +275,8 @@ function renderMenu() {
       <span class="menu-visual">${dish.icon}</span>
       <span>
         <strong>${dish.name}</strong>
-        <p>${dish.shortDescription}</p>
+        <p>${dish.description}</p>
         <footer>
-          <span>${Math.round(dish.diameterM * 100)} cm</span>
           <span>${dish.price}</span>
         </footer>
       </span>

@@ -1,52 +1,36 @@
 [
   {
-    "id": "plato-real",
-    "name": "Plato real TEKNIA",
-    "shortDescription": "Modelo del plato principal",
-    "description": "Plato visualizado mediante realidad aumentada",
-    "price": "$18",
-    "icon": "🍽️",
-    "model": "./models/plato-real.glb",
-    "diameterM": 0.28,
+    "id": "sanduche-pollo",
+    "name": "Sanduche de pollo",
+    "shortDescription": "Pan brioche, pollo crujiente, lechuga, tomate y salsa especial",
+    "description": "Pan brioche, pollo crujiente, lechuga, tomate y salsa especial",
+    "price": "$6",
+    "icon": "🍔",
+    "model": "./models/sanduche-pollo.glb",
+    "diameterM": 0.16,
     "displayScale": 2,
     "rotationOffsetDeg": {
       "x": 180,
       "y": 0,
       "z": 0
     },
-    "fallbackColor": "#a95f38",
-    "cleanup": {
-      "enabled": true,
-      "origin": [
-        -0.0988514128,
-        0.4784577504,
-        -0.0312763291
-      ],
-      "axisX": [
-        0.1205398877,
-        -0.198034414,
-        0.9727551112
-      ],
-      "axisDepth": [
-        0.4884060431,
-        0.8649305985,
-        0.115562091
-      ],
-      "axisUp": [
-        0.8642509315,
-        -0.4611696333,
-        -0.2009798418
-      ],
-      "cropCenter": [
-        -0.08,
-        0.05
-      ],
-      "cropRadius": [
-        0.34,
-        0.44
-      ],
-      "heightMin": -0.25,
-      "heightMax": 0.25
-    }
+    "fallbackColor": "#c98642"
+  },
+  {
+    "id": "spicy-ramen",
+    "name": "Spicy Ramen",
+    "shortDescription": "Fideos ramen, caldo picante, huevo, carne, cebollin y vegetales",
+    "description": "Fideos ramen, caldo picante, huevo, carne, cebollin y vegetales",
+    "price": "$10",
+    "icon": "🍜",
+    "model": "./models/spicy-ramen.glb",
+    "diameterM": 0.20,
+    "displayScale": 2,
+    "rotationOffsetDeg": {
+      "x": 180,
+      "y": 0,
+      "z": 0
+    },
+    "fallbackColor": "#b85a3c"
   }
 ]
