@@ -3,16 +3,13 @@
     "id": "sanduche-pollo",
     "name": "Sanduche de pollo",
     "shortDescription": "Pan brioche, pollo crujiente, lechuga, tomate y salsa especial",
-    "description": "Pan brioche, pollo crujiente, lechuga, tomate y salsa especial",
     "price": "$6",
     "icon": "🍔",
     "model": "./models/sanduche-pollo.glb",
-    "diameterM": 0.16,
-    "displayScale": 2,
-    "rotationOffsetDeg": {
-      "x": 180,
-      "y": 0,
-      "z": 0
+    "realSizeM": {
+      "width": 0.16,
+      "depth": 0.12,
+      "height": 0.09
     },
     "fallbackColor": "#c98642"
   },
@@ -20,16 +17,13 @@
     "id": "spicy-ramen",
     "name": "Spicy Ramen",
     "shortDescription": "Fideos ramen, caldo picante, huevo, carne, cebollin y vegetales",
-    "description": "Fideos ramen, caldo picante, huevo, carne, cebollin y vegetales",
     "price": "$10",
     "icon": "🍜",
     "model": "./models/spicy-ramen.glb",
-    "diameterM": 0.20,
-    "displayScale": 2,
-    "rotationOffsetDeg": {
-      "x": 180,
-      "y": 0,
-      "z": 0
+    "realSizeM": {
+      "width": 0.24,
+      "depth": 0.24,
+      "height": 0.1
     },
     "fallbackColor": "#b85a3c"
   }
